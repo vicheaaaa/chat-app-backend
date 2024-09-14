@@ -4,7 +4,8 @@
   "description": "chatapp",
   "main": "server.js",
   "scripts": {
-    "server": "nodemon backend/server.js"
+    "server": "nodemon backend/server.js",
+    "start": "node server.js"
   },
   "type": "module",
   "author": "Vichea",
