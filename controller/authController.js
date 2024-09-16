@@ -8,12 +8,13 @@ export const signup = async (req, res) => {
     if (password !== confirmPassword) {
       return res.status(400).json({ error: "Password don't match!" });
     }
+
     const user = await User.findOne({ username });
     if (user) {
-      res.status(409).json({ error: "Username already exists!" });
+      return res.status(409).json({ error: "Username already exists!" });
     }
 
-    const salt = await bcrypt.genSalt(10);
+    const salt = await bcrypt.genSalt(8); // Optimized salt rounds
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const boyProfilePic = `https://avatar.iran.liara.run/public/boy?username=${username}`;
@@ -27,22 +28,18 @@ export const signup = async (req, res) => {
       profilePic: gender === "male" ? boyProfilePic : girlProfilePic,
     });
 
-    if (newUser) {
-      generateTokenAndSetCookie(newUser._id, res);
-      await newUser.save();
+    await newUser.save(); // Save user first before generating the token
+    generateTokenAndSetCookie(newUser._id, res);
 
-      res.status(200).json({
-        _id: newUser._id,
-        fullname: newUser.fullname,
-        username: newUser.username,
-        profilePic: newUser.profilePic,
-      });
-    } else {
-      res.status(400).json({ error: "Invalid user data!" });
-    }
+    res.status(200).json({
+      _id: newUser._id,
+      fullname: newUser.fullname,
+      username: newUser.username,
+      profilePic: newUser.profilePic,
+    });
   } catch (error) {
-    console.log("Error in signup controller", error);
-    res.status(500).json({ error: "Ïnternal server error!" });
+    console.error("Error in signup controller", error.message, error.stack);
+    res.status(500).json({ error: "Internal server error!" });
   }
 };
 
@@ -50,12 +47,14 @@ export const login = async (req, res) => {
   try {
     const { username, password } = req.body;
     const user = await User.findOne({ username });
-    const isPasswordCorrect = await bcrypt.compare(
-      password,
-      user?.password || ""
-    );
 
-    if (!user || !isPasswordCorrect) {
+    if (!user) {
+      return res.status(400).json({ error: "Incorrect username or password!" });
+    }
+
+    const isPasswordCorrect = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordCorrect) {
       return res.status(400).json({ error: "Incorrect username or password!" });
     }
 
@@ -68,8 +67,8 @@ export const login = async (req, res) => {
       profilePic: user.profilePic,
     });
   } catch (error) {
-    console.log("Error in login controller", error);
-    res.status(500).json({ error: "Ïnternal server error!" });
+    console.error("Error in login controller", error.message, error.stack);
+    res.status(500).json({ error: "Internal server error!" });
   }
 };
 
@@ -78,7 +77,7 @@ export const logout = (req, res) => {
     res.cookie("jwt", "", { maxAge: 0 });
     res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
-    console.log("Error in logout controller", error);
-    res.status(500).json({ error: "Ïnternal server error!" });
+    console.error("Error in logout controller", error.message, error.stack);
+    res.status(500).json({ error: "Internal server error!" });
   }
 };
